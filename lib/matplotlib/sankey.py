@@ -195,6 +195,7 @@ class Sankey:
                      Path.CURVE4]
         # Vertices of a cubic Bezier curve approximating a 90 deg arc
         # These can be determined by Path.arc(0, 90).
+        # TODO: JOHAN OGILLAR HARDCODED VALUES IN ARRAY (chatgpt):
         ARC_VERTICES = np.array([[1.00000000e+00, 0.00000000e+00],
                                  [1.00000000e+00, 2.65114773e-01],
                                  [8.94571235e-01, 5.19642327e-01],
@@ -347,6 +348,46 @@ class Sankey:
         # path[2] = path[2][::-1]
         # return path
 
+    def _checkArguments():
+        return
+
+    def _pre_process():
+        return
+
+    def _check_prior(self, flows, prior, connect, n):
+        if prior is not None:
+            if prior < 0:
+                raise ValueError("The index of the prior diagram is negative")
+            if min(connect) < 0:
+                raise ValueError(
+                    "At least one of the connection indices is negative")
+            if prior >= len(self.diagrams):
+                raise ValueError(
+                    f"The index of the prior diagram is {prior}, but there "
+                    f"are only {len(self.diagrams)} other diagrams")
+            if connect[0] >= len(self.diagrams[prior].flows):
+                # TODO: JOHAN CHANGED: this one was not an f string like the others!
+                raise ValueError(
+                    f"The connection index to the source diagram is {connect[0]}, but "
+                    f"that diagram has only {len(self.diagrams[prior].flows)} flows")
+            if connect[1] >= n:
+                raise ValueError(
+                    f"The connection index to this diagram is {connect[1]}, "
+                    f"but this diagram has only {n} flows")
+            if self.diagrams[prior].angles[connect[0]] is None:
+                raise ValueError(
+                    f"The connection cannot be made, which may occur if the "
+                    f"magnitude of flow {connect[0]} of diagram {prior} is "
+                    f"less than the specified tolerance")
+            flow_error = (self.diagrams[prior].flows[connect[0]] +
+                          flows[connect[1]])
+            # TODO: JOHAN thinks more test cases
+            if abs(flow_error) >= self.tolerance:
+                raise ValueError(
+                    f"The scaled sum of the connected flows is {flow_error}, "
+                    f"which is not within the tolerance ({self.tolerance})")
+
+    # TODO: Too long function!
     @_docstring.interpd
     def add(self, patchlabel='', flows=None, orientations=None, labels='',
             trunklength=1.0, pathlengths=0.25, prior=None, connect=(0, 0),
@@ -433,16 +474,19 @@ class Sankey:
         --------
         Sankey.finish
         """
-        # Check and preprocess the arguments.
+        # TODO V - Preprocess flows
         flows = np.array([1.0, -1.0]) if flows is None else np.array(flows)
         n = flows.shape[0]  # Number of flows
+        # TODO V - Preprocess rotation
         if rotation is None:
             rotation = 0
         else:
             # In the code below, angles are expressed in deg/90.
             rotation /= 90.0
+        # TODO V - Preprocess orientations
         if orientations is None:
             orientations = 0
+        # TODO V - Check orientations
         try:
             orientations = np.broadcast_to(orientations, n)
         except ValueError:
@@ -450,6 +494,7 @@ class Sankey:
                 f"The shapes of 'flows' {np.shape(flows)} and 'orientations' "
                 f"{np.shape(orientations)} are incompatible"
             ) from None
+        # TODO V - Check labels
         try:
             labels = np.broadcast_to(labels, n)
         except ValueError:
@@ -457,47 +502,24 @@ class Sankey:
                 f"The shapes of 'flows' {np.shape(flows)} and 'labels' "
                 f"{np.shape(labels)} are incompatible"
             ) from None
+        # TODO V - Check trunklength
         if trunklength < 0:
             raise ValueError(
                 "'trunklength' is negative, which is not allowed because it "
                 "would cause poor layout")
+        # TODO V - Check flows
         if abs(np.sum(flows)) > self.tolerance:
             _log.info("The sum of the flows is nonzero (%f; patchlabel=%r); "
                       "is the system not at steady state?",
                       np.sum(flows), patchlabel)
+        # TODO V - Create 3 new variables
+
         scaled_flows = self.scale * flows
         gain = sum(max(flow, 0) for flow in scaled_flows)
         loss = sum(min(flow, 0) for flow in scaled_flows)
-        if prior is not None:
-            if prior < 0:
-                raise ValueError("The index of the prior diagram is negative")
-            if min(connect) < 0:
-                raise ValueError(
-                    "At least one of the connection indices is negative")
-            if prior >= len(self.diagrams):
-                raise ValueError(
-                    f"The index of the prior diagram is {prior}, but there "
-                    f"are only {len(self.diagrams)} other diagrams")
-            if connect[0] >= len(self.diagrams[prior].flows):
-                raise ValueError(
-                    "The connection index to the source diagram is {}, but "
-                    "that diagram has only {} flows".format(
-                        connect[0], len(self.diagrams[prior].flows)))
-            if connect[1] >= n:
-                raise ValueError(
-                    f"The connection index to this diagram is {connect[1]}, "
-                    f"but this diagram has only {n} flows")
-            if self.diagrams[prior].angles[connect[0]] is None:
-                raise ValueError(
-                    f"The connection cannot be made, which may occur if the "
-                    f"magnitude of flow {connect[0]} of diagram {prior} is "
-                    f"less than the specified tolerance")
-            flow_error = (self.diagrams[prior].flows[connect[0]] +
-                          flows[connect[1]])
-            if abs(flow_error) >= self.tolerance:
-                raise ValueError(
-                    f"The scaled sum of the connected flows is {flow_error}, "
-                    f"which is not within the tolerance ({self.tolerance})")
+
+        # TODO: ADDED BY US
+        self._check_prior(flows, prior, connect, n)
 
         # Determine if the flows are inputs.
         are_inputs = [None] * n
@@ -525,6 +547,7 @@ class Sankey:
                 if is_input is not None:
                     angles[i] = RIGHT
             else:
+                # TODO ISAC TYCKER SKRIV OM IFSATS
                 if orient != -1:
                     raise ValueError(
                         f"The value of orientations[{i}] is {orient}, "
@@ -540,6 +563,7 @@ class Sankey:
                 raise ValueError(
                     f"The lengths of 'flows' ({n}) and 'pathlengths' "
                     f"({len(pathlengths)}) are incompatible")
+        # TODO JOHAN FÖRSTÅR INTE LOGIKEN
         else:  # Make pathlengths into a list.
             urlength = pathlengths
             ullength = pathlengths
@@ -776,6 +800,7 @@ class Sankey:
         return self
 
     def finish(self):
+        # TODO: "Adjust the axes" vagt, forstar inte riktigt
         """
         Adjust the Axes and return a list of information about the Sankey
         subdiagram(s).
