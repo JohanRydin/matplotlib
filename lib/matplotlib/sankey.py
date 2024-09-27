@@ -357,6 +357,14 @@ class Sankey:
     def _preprocess_flows(self, flows):
         return np.array([1.0, -1.0]) if flows is None else np.array(flows)
 
+    def _preprocess_rotation(self, rotation):
+        if rotation is None:
+            rotation = 0
+        else:
+            # In the code below, angles are expressed in deg/90.
+            rotation /= 90.0
+        return rotation
+
     def _check_prior(self, flows, prior, connect, n):
         if prior is not None:
             if prior < 0:
@@ -483,11 +491,8 @@ class Sankey:
 
         n = flows.shape[0]  # Number of flows
         # TODO V - Preprocess rotation
-        if rotation is None:
-            rotation = 0
-        else:
-            # In the code below, angles are expressed in deg/90.
-            rotation /= 90.0
+        rotation = self._preprocess_rotation(rotation)
+
         # TODO V - Preprocess orientations
         if orientations is None:
             orientations = 0
