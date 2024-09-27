@@ -354,6 +354,9 @@ class Sankey:
     def _pre_process():
         return
 
+    def _preprocess_flows(self, flows):
+        return np.array([1.0, -1.0]) if flows is None else np.array(flows)
+
     def _check_prior(self, flows, prior, connect, n):
         if prior is not None:
             if prior < 0:
@@ -474,8 +477,10 @@ class Sankey:
         --------
         Sankey.finish
         """
+
         # TODO V - Preprocess flows
-        flows = np.array([1.0, -1.0]) if flows is None else np.array(flows)
+        flows = self._preprocess_flows(flows)
+
         n = flows.shape[0]  # Number of flows
         # TODO V - Preprocess rotation
         if rotation is None:
