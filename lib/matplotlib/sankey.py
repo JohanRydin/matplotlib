@@ -348,12 +348,6 @@ class Sankey:
         # path[2] = path[2][::-1]
         # return path
 
-    def _checkArguments():
-        return
-
-    def _pre_process():
-        return
-
     def _preprocess_flows(self, flows):
         return np.array([1.0, -1.0]) if flows is None else np.array(flows)
 
@@ -387,6 +381,18 @@ class Sankey:
             ) from None
         return labels
 
+    def _check_trunklength(self, trunklength):
+        if trunklength < 0:
+            raise ValueError(
+                "'trunklength' is negative, which is not allowed because it "
+                "would cause poor layout")
+
+    def _check_flows(self, flows, patchlabel):
+        if abs(np.sum(flows)) > self.tolerance:
+            _log.info("The sum of the flows is nonzero (%f; patchlabel=%r); "
+                      "is the system not at steady state?",
+                      np.sum(flows), patchlabel)
+
     def _check_prior(self, flows, prior, connect, n):
         if prior is not None:
             if prior < 0:
@@ -419,7 +425,6 @@ class Sankey:
                     f"The scaled sum of the connected flows is {flow_error}, "
                     f"which is not within the tolerance ({self.tolerance})")
 
-    # TODO: Too long function!
     @_docstring.interpd
     def add(self, patchlabel='', flows=None, orientations=None, labels='',
             trunklength=1.0, pathlengths=0.25, prior=None, connect=(0, 0),
@@ -517,17 +522,9 @@ class Sankey:
 
         labels = self._preprocess_labels(labels, n, flows)
 
-        # TODO V - Check trunklength
-        if trunklength < 0:
-            raise ValueError(
-                "'trunklength' is negative, which is not allowed because it "
-                "would cause poor layout")
-        # TODO V - Check flows
-        if abs(np.sum(flows)) > self.tolerance:
-            _log.info("The sum of the flows is nonzero (%f; patchlabel=%r); "
-                      "is the system not at steady state?",
-                      np.sum(flows), patchlabel)
-        # TODO V - Create 3 new variables
+        self._check_trunklength(trunklength)
+
+        self._check_flows(flows, patchlabel)
 
         scaled_flows = self.scale * flows
         gain = sum(max(flow, 0) for flow in scaled_flows)
