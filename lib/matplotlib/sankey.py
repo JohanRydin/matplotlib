@@ -377,6 +377,16 @@ class Sankey:
             ) from None
         return orientations
 
+    def _preprocess_labels(self, labels, n, flows):
+        try:
+            labels = np.broadcast_to(labels, n)
+        except ValueError:
+            raise ValueError(
+                f"The shapes of 'flows' {np.shape(flows)} and 'labels' "
+                f"{np.shape(labels)} are incompatible"
+            ) from None
+        return labels
+
     def _check_prior(self, flows, prior, connect, n):
         if prior is not None:
             if prior < 0:
@@ -389,7 +399,6 @@ class Sankey:
                     f"The index of the prior diagram is {prior}, but there "
                     f"are only {len(self.diagrams)} other diagrams")
             if connect[0] >= len(self.diagrams[prior].flows):
-                # TODO: JOHAN CHANGED: this one was not an f string like the others!
                 raise ValueError(
                     f"The connection index to the source diagram is {connect[0]}, but "
                     f"that diagram has only {len(self.diagrams[prior].flows)} flows")
@@ -506,14 +515,8 @@ class Sankey:
 
         orientations = self._preprocess_orientations(orientations, n, flows)
 
-        # TODO V - Check labels
-        try:
-            labels = np.broadcast_to(labels, n)
-        except ValueError:
-            raise ValueError(
-                f"The shapes of 'flows' {np.shape(flows)} and 'labels' "
-                f"{np.shape(labels)} are incompatible"
-            ) from None
+        labels = self._preprocess_labels(labels, n, flows)
+
         # TODO V - Check trunklength
         if trunklength < 0:
             raise ValueError(
