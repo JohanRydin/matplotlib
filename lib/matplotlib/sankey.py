@@ -365,6 +365,18 @@ class Sankey:
             rotation /= 90.0
         return rotation
 
+    def _preprocess_orientations(self, orientations, n, flows):
+        if orientations is None:
+            orientations = 0
+        try:
+            orientations = np.broadcast_to(orientations, n)
+        except ValueError:
+            raise ValueError(
+                f"The shapes of 'flows' {np.shape(flows)} and 'orientations' "
+                f"{np.shape(orientations)} are incompatible"
+            ) from None
+        return orientations
+
     def _check_prior(self, flows, prior, connect, n):
         if prior is not None:
             if prior < 0:
@@ -486,24 +498,14 @@ class Sankey:
         Sankey.finish
         """
 
-        # TODO V - Preprocess flows
         flows = self._preprocess_flows(flows)
 
         n = flows.shape[0]  # Number of flows
-        # TODO V - Preprocess rotation
+
         rotation = self._preprocess_rotation(rotation)
 
-        # TODO V - Preprocess orientations
-        if orientations is None:
-            orientations = 0
-        # TODO V - Check orientations
-        try:
-            orientations = np.broadcast_to(orientations, n)
-        except ValueError:
-            raise ValueError(
-                f"The shapes of 'flows' {np.shape(flows)} and 'orientations' "
-                f"{np.shape(orientations)} are incompatible"
-            ) from None
+        orientations = self._preprocess_orientations(orientations, n, flows)
+
         # TODO V - Check labels
         try:
             labels = np.broadcast_to(labels, n)
@@ -528,7 +530,6 @@ class Sankey:
         gain = sum(max(flow, 0) for flow in scaled_flows)
         loss = sum(min(flow, 0) for flow in scaled_flows)
 
-        # TODO: ADDED BY US
         self._check_prior(flows, prior, connect, n)
 
         # Determine if the flows are inputs.
