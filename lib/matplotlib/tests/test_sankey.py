@@ -1,5 +1,7 @@
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
+import numpy as np
+import logging
 
 from matplotlib.sankey import Sankey
 from matplotlib.testing.decorators import check_figures_equal
@@ -103,3 +105,107 @@ def test_sankey3(fig_test, fig_ref):
     s_ref.add(flows=[0.25, -0.25, -0.25, 0.25, 0.5, -0.5],
               orientations=[1, -1, 1, -1, 0, 0])
     s_ref.finish()
+
+
+def test__preprocess_flows():
+    sankey = Sankey()
+    flows = [100.0, 200.0, -50.0, -250.0]
+    empty_array = []
+    assert_array_equal(sankey._preprocess_flows(None), np.array([1.0, -1.0])),
+    "Failed for None input"
+    assert_array_equal(sankey._preprocess_flows(np.array(flows)), np.array(flows)),
+    "Failed for list input"
+    assert_array_equal(sankey._preprocess_flows(np.array(empty_array)),
+                       np.array(empty_array)),
+    "Failed for empty list input"
+
+
+def test__preprocess_rotation():
+    sankey = Sankey()
+    assert sankey._preprocess_rotation(None) == 0
+    assert sankey._preprocess_rotation(90) == 1
+    assert sankey._preprocess_rotation(270) == 3
+
+
+def test__preprocess_orientations():
+    sankey = Sankey()
+    assert_array_equal(sankey._preprocess_orientations(
+        None, 3, np.broadcast_to(0, 3)), np.broadcast_to(0, 3))
+    orientations = [1, 2]
+    flows = np.array([3, 4])
+    with pytest.raises(ValueError):
+        sankey._preprocess_orientations(orientations, 1, flows)
+
+
+# TODO: only indirectly calls _preprocess_labels
+# since it is quite embedded in other functions/codesnippet
+def test__preprocess_labels():
+    sankey = Sankey()
+
+    # Test with None labels
+    flows = np.array([1.0, -1.0, 2.0])
+    result = sankey.add(flows=flows, labels=None, trunklength=1.0)
+    assert isinstance(result, Sankey)
+
+    # Case 2: Test add() with a valid list of labels
+    labels = ['Input', 'Output', 'Min']
+    result = sankey.add(flows=flows, labels=labels, trunklength=1.0)
+    assert isinstance(result, Sankey)
+
+    # Case 3: Test with less labels than flows
+    incompatible_labels = ['Input', 'Output']  # Only 2 labels for 3 flows
+    with pytest.raises(ValueError):
+        sankey.add(flows=flows, labels=incompatible_labels, trunklength=1.0)
+
+    # Case 4: Test with more labels than flows
+    more_labels = ['Input', 'Output', 'Banana', 'Apple']
+    with pytest.raises(ValueError):
+        result = sankey.add(flows=flows, labels=more_labels, trunklength=1.0)
+
+
+def test__check_trunklength():
+    s = Sankey(flows=[0.25], labels=['First'], orientations=[-1])
+    s._check_trunklength(5)
+    s._check_trunklength(0)
+    with pytest.raises(ValueError,
+                       match="trunklength' is negative, which is not allowed because it"
+                       " would cause poor layout"):
+        s._check_trunklength(-3)
+
+
+# TODO: Does the caplog really reset between the tests?
+def test__check_flows(caplog):
+    sankey = Sankey(tolerance=3)
+
+    # Test for zero flow sum
+    flows = [100.0, -100.0]
+    patchlabel = "Example Patchlabel"
+
+    with caplog.at_level(logging.INFO):
+        sankey._check_flows(flows, patchlabel)
+
+    assert "The sum of the flows is nonzero" not in caplog.text
+
+    # Test for flow with empty array
+    flows = []
+
+    with caplog.at_level(logging.INFO):
+        sankey._check_flows(flows, patchlabel)
+
+    assert "The sum of the flows is nonzero" not in caplog.text
+
+    # Test for non-zero flow sum
+    flows = [100.0, -50.0]
+
+    with caplog.at_level(logging.INFO):
+        sankey._check_flows(flows, patchlabel)
+
+    assert "The sum of the flows is nonzero" in caplog.text
+
+    # Test for flow sum equal to tolerance
+    flows = [5.02, -2.02]
+
+    with caplog.at_level(logging.INFO):
+        sankey._check_flows(flows, patchlabel)
+
+    assert "The sum of the flows is nonzero" in caplog.text

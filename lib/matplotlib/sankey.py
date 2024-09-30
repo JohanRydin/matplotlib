@@ -574,7 +574,6 @@ class Sankey:
                 raise ValueError(
                     f"The lengths of 'flows' ({n}) and 'pathlengths' "
                     f"({len(pathlengths)}) are incompatible")
-        # TODO JOHAN FÖRSTÅR INTE LOGIKEN
         else:  # Make pathlengths into a list.
             urlength = pathlengths
             ullength = pathlengths
