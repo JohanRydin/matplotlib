@@ -1617,7 +1617,6 @@ def ship(box: Box, xy: tuple[float, float] = (0, 0)) -> Output:
         glue_order = box.glue_order
         glue_sign = box.glue_sign
         base_line = cur_v
-        left_edge = cur_h
 
         for p in box.children:
             if isinstance(p, Char):
@@ -1681,7 +1680,6 @@ def ship(box: Box, xy: tuple[float, float] = (0, 0)) -> Output:
         glue_sign = box.glue_sign
         left_edge = cur_h
         cur_v -= box.height
-        top_edge = cur_v
 
         for p in box.children:
             if isinstance(p, Kern):
@@ -2814,7 +2812,6 @@ class Parser:
 
     def boldsymbol(self, toks: ParseResults) -> T.Any:
         self.push_state()
-        state = self.get_state()
         hlist: list[Node] = []
         name = toks["value"]
         for c in name:
